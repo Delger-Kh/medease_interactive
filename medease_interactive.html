@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MedEase — Interactive Prototype</title>
+<style>
+/* ─── Reset & Base ─── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;background:#ddd9d3;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 12px 40px;user-select:none}
+
+/* ─── Outer wrapper ─── */
+.proto-wrap{display:flex;flex-direction:column;align-items:center;gap:16px;width:100%}
+.screen-badge{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#888;text-align:center}
+
+/* ─── Phone shell ─── */
+.phone{
+  width:320px;height:640px;
+  background:#f5f4f1;
+  border-radius:42px;
+  border:2.5px solid #1a1a1a;
+  position:relative;overflow:hidden;
+  box-shadow:0 12px 48px rgba(0,0,0,.22),inset 0 0 0 1px rgba(255,255,255,.3);
+}
+/* notch */
+.phone::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:80px;height:14px;background:#1a1a1a;border-radius:0 0 12px 12px;z-index:100}
+
+/* ─── Screens ─── */
+.screen{position:absolute;inset:0;display:none;flex-direction:column;background:#f5f4f1;overflow:hidden;padding-top:14px}
+.screen.active{display:flex}
+
+/* ─── Status bar ─── */
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding:4px 18px 0;flex-shrink:0}
+.status-time{font-size:11px;font-weight:700;color:#1a1a1a}
+.status-icons{font-size:9px;color:#1a1a1a;letter-spacing:1px}
+
+/* ─── Header ─── */
+.header{background:#fff;padding:8px 14px 10px;border-bottom:1px solid #e8e6e2;flex-shrink:0}
+.header-title{font-size:15px;font-weight:700;color:#1a1a1a;margin-top:2px}
+.back-btn{display:flex;align-items:center;gap:4px;background:none;border:none;color:#e05252;font-size:12px;font-weight:500;padding:0;cursor:pointer;margin-bottom:2px}
+.back-btn svg{width:14px;height:14px}
+
+/* ─── Step progress ─── */
+.stepper{background:#fff;padding:10px 16px 4px;border-bottom:1px solid #e8e6e2;flex-shrink:0}
+.step-dots{display:flex;align-items:center;gap:0}
+.step-dot{width:26px;height:26px;border-radius:50%;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #ddd;color:#bbb;background:#fff;flex-shrink:0;transition:all .2s}
+.step-dot.s-done{background:#1a1a1a;border-color:#1a1a1a;color:#fff}
+.step-dot.s-active{background:#fff;border-color:#1a1a1a;color:#1a1a1a}
+.step-line{flex:1;height:2px;background:#ddd;transition:background .2s}
+.step-line.s-done{background:#1a1a1a}
+.step-lbls{display:flex;margin-top:4px;padding-bottom:6px}
+.step-lbl{flex:1;text-align:center;font-size:8px;color:#bbb;font-weight:500}
+.step-lbl.s-done,.step-lbl.s-active{color:#1a1a1a;font-weight:700}
+
+/* ─── Body ─── */
+.body{flex:1;overflow-y:auto;padding:12px 14px;scrollbar-width:none}
+.body::-webkit-scrollbar{display:none}
+
+/* ─── Cards ─── */
+.card{background:#fff;border-radius:12px;border:1px solid #e8e6e2;padding:12px;margin-bottom:9px}
+.card.clickable{cursor:pointer;transition:transform .1s,box-shadow .1s}
+.card.clickable:active{transform:scale(.985);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.card.selected-card{border-color:#1a1a1a;border-width:2px}
+.card-title{font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:2px}
+.card-sub{font-size:11px;color:#888;line-height:1.4}
+
+/* ─── Tags / Badges ─── */
+.tag{display:inline-flex;align-items:center;font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;white-space:nowrap}
+.tag-green{background:#e4f5ed;color:#1a7a4a}
+.tag-red{background:#fdeaea;color:#c0392b}
+.tag-blue{background:#e8f0fd;color:#1a4ac0}
+.tag-gray{background:#efefef;color:#777}
+.tag-orange{background:#fff4e0;color:#a05c00}
+.tag-dark{background:#1a1a1a;color:#fff}
+
+/* ─── Alert boxes ─── */
+.alert{border-radius:9px;padding:9px 11px;font-size:11px;line-height:1.5;margin-bottom:9px}
+.alert-red{background:#fdeaea;color:#c0392b;border:1px solid #f5c6c6}
+.alert-orange{background:#fff4e0;color:#a05c00;border:1px solid #f5dfa0}
+.alert-green{background:#e4f5ed;color:#1a7a4a;border:1px solid #b2e0c8}
+
+/* ─── Section labels ─── */
+.sec-lbl{font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.6px;margin:10px 0 6px}
+
+/* ─── Input ─── */
+.input-field{width:100%;border:1px solid #e0dedd;border-radius:9px;padding:9px 11px;font-size:13px;background:#fff;color:#1a1a1a;outline:none}
+.input-field:focus{border-color:#1a1a1a}
+
+/* ─── Pills ─── */
+.pill-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.pill{padding:5px 13px;border-radius:20px;font-size:12px;border:1px solid #ddd;cursor:pointer;background:#fff;color:#555;transition:all .15s;font-weight:500}
+.pill.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+
+/* ─── Stars ─── */
+.stars{color:#f0a500;font-size:12px;letter-spacing:1px}
+
+/* ─── Buttons ─── */
+.btn-primary{width:100%;background:#1a1a1a;color:#fff;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .15s}
+.btn-primary:active{opacity:.85}
+.btn-primary.red{background:#e05252}
+.btn-secondary{width:100%;background:#fff;color:#1a1a1a;border:2px solid #1a1a1a;border-radius:12px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;transition:background .15s}
+.btn-secondary:active{background:#f5f4f1}
+.btn-ghost{background:none;border:none;cursor:pointer;padding:0;font-size:12px;color:#888}
+
+/* ─── Time slots ─── */
+.slot-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
+.slot{border:1.5px solid #e0dedd;border-radius:9px;padding:8px 4px;font-size:12px;font-weight:600;text-align:center;cursor:pointer;background:#fff;color:#1a1a1a;transition:all .15s}
+.slot.taken{background:#f5f4f1;color:#ccc;border-color:#eee;cursor:not-allowed;font-weight:400}
+.slot.selected{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.slot:not(.taken):not(.selected):active{background:#f0efec}
+
+/* ─── Calendar ─── */
+.cal-month{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.cal-month-name{font-size:13px;font-weight:700;color:#1a1a1a}
+.cal-nav{background:none;border:1px solid #ddd;border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer;color:#666}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-hdr{text-align:center;font-size:9px;color:#aaa;font-weight:700;padding:3px 0}
+.cal-day{text-align:center;padding:5px 2px;font-size:11px;font-weight:500;border-radius:7px;cursor:pointer;color:#1a1a1a;transition:background .12s}
+.cal-day.disabled{color:#ccc;pointer-events:none}
+.cal-day.today{background:#1a1a1a;color:#fff;font-weight:800}
+.cal-day.cal-sel{background:#e05252;color:#fff;font-weight:700}
+.cal-day:not(.disabled):not(.today):not(.cal-sel):hover{background:#f0efec}
+
+/* ─── Row util ─── */
+.row{display:flex;align-items:center;justify-content:space-between}
+.divider{height:1px;background:#f0efec;margin:9px 0}
+
+/* ─── Tabs ─── */
+.tab-row{display:flex;border-bottom:1px solid #e8e6e2;margin-bottom:10px}
+.tab-btn{flex:1;text-align:center;padding:9px 0;font-size:12px;font-weight:600;color:#aaa;border-bottom:2.5px solid transparent;cursor:pointer;transition:color .15s}
+.tab-btn.active{color:#1a1a1a;border-bottom-color:#1a1a1a}
+
+/* ─── Toggle switch ─── */
+.toggle{width:36px;height:21px;border-radius:11px;position:relative;cursor:pointer;flex-shrink:0;transition:background .2s}
+.toggle.on{background:#1a1a1a}
+.toggle.off{background:#ccc}
+.toggle-dot{width:17px;height:17px;border-radius:50%;background:#fff;position:absolute;top:2px;transition:left .18s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle.on .toggle-dot{left:17px}
+.toggle.off .toggle-dot{left:2px}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f5f4f1}
+.setting-row:last-child{border-bottom:none}
+.setting-lbl{font-size:13px;color:#1a1a1a}
+.setting-val{font-size:12px;color:#888}
+
+/* ─── Success ─── */
+.success-ring{width:80px;height:80px;border-radius:50%;border:3px solid #1a7a4a;background:#e4f5ed;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+
+/* ─── Avatar ─── */
+.avatar{border-radius:50%;background:#fdeaea;display:flex;align-items:center;justify-content:center;font-weight:800;color:#e05252;flex-shrink:0}
+.avatar-sm{width:38px;height:38px;font-size:13px}
+.avatar-md{width:44px;height:44px;font-size:15px}
+.avatar-lg{width:64px;height:64px;font-size:22px;background:#fdeaea;color:#e05252;margin:0 auto 8px}
+
+/* ─── Info rows ─── */
+.info-row{display:flex;gap:6px;margin-bottom:7px}
+.info-lbl{font-size:11px;color:#aaa;min-width:62px;flex-shrink:0}
+.info-val{font-size:12px;color:#1a1a1a;font-weight:600}
+
+/* ─── Bottom nav ─── */
+.bottom-nav{display:flex;background:#fff;border-top:1px solid #e8e6e2;padding:6px 0 10px;flex-shrink:0}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:2px 0}
+.nav-ico{font-size:20px;line-height:1}
+.nav-lbl{font-size:8px;color:#bbb;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.nav-item.active .nav-lbl{color:#1a1a1a}
+.nav-item.active .nav-ico{filter:brightness(0)}
+
+/* ─── Specialty icons ─── */
+.spec-scroll{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.spec-scroll::-webkit-scrollbar{display:none}
+.spec-item{flex-shrink:0;text-align:center;cursor:pointer}
+.spec-icon-wrap{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 4px;transition:transform .1s}
+.spec-item:active .spec-icon-wrap{transform:scale(.92)}
+.spec-lbl{font-size:10px;color:#666;font-weight:500}
+
+/* ─── Doctor card ─── */
+.doc-card{display:flex;align-items:center;gap:10px}
+.doc-info{flex:1}
+.doc-price{font-size:14px;font-weight:800;color:#e05252}
+
+/* ─── Checkbox ─── */
+.checkbox-row{display:flex;align-items:center;gap:9px;margin:10px 0}
+.custom-cb{width:18px;height:18px;border:2px solid #ddd;border-radius:5px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.custom-cb.checked{background:#1a1a1a;border-color:#1a1a1a;color:#fff}
+.cb-lbl{font-size:11px;color:#888}
+
+/* ─── Total row ─── */
+.total-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0}
+
+/* ─── Nav quick buttons ─── */
+.nav-quick{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;max-width:340px}
+.nq-btn{padding:5px 10px;font-size:10px;font-weight:600;border-radius:8px;border:1.5px solid #bbb;background:#fff;color:#555;cursor:pointer;transition:all .15s}
+.nq-btn.cur{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.nq-tip{font-size:9px;color:#aaa;text-align:center;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="proto-wrap">
+  <div class="screen-badge" id="screen-badge">1 · Нүүр хуудас</div>
+  <div class="phone">
+
+<!-- ══════════════════════════════
+  S1 · НҮҮ ХУУДАС (Home)
+══════════════════════════════ -->
+<div class="screen active" id="s1">
+  <div class="status-bar"><span class="status-time">9:41</span><span class="status-icons">●●● ▲ ⬛</span></div>
+  <div class="header"><div class="header-title">Дэлгэц 1 — нүүр хуудас</div></div>
+  <div class="body">
+    <!-- Emergency -->
+    <div class="alert alert-red" style="display:flex;align-items:center;gap:9px">
+      <span style="font-size:18px">🚨</span>
+      <div><div style="font-weight:700;font-size:12px">Яаралтай тусламж</div><div style="font-size:10px">103, 107 дугаарт залга</div></div>
+    </div>
+    <input class="input-field" placeholder="[ хайлтын талбар ]" readonly onclick="go(2)">
+    <div class="sec-lbl" style="margin-top:12px">Эмнэлэг сонгох</div>
+    <!-- Hospital list -->
+    <div class="card clickable" onclick="go(2);selectHospital('Улсын клиникийн эмнэлэг','★★★★☆ · 1.2km')">
+      <div class="row"><div><div class="card-title">Улсын клиникийн эмнэлэг</div><div class="card-sub">★★★★☆ · хайг</div></div><span class="tag tag-dark">НЭЭЛТТЭЙ</span></div>
+    </div>
+    <div class="card clickable" onclick="go(2);selectHospital('Интермед эмнэлэг','★★★★★ · 2.1km')">
+      <div class="row"><div><div class="card-title">Интермед эмнэлэг</div><div class="card-sub">★★★★★ · хайг</div></div><span class="tag tag-green">НЭЭЛТТЭЙ</span></div>
+    </div>
+    <div class="card">
+      <div class="row"><div><div class="card-title">Гранд Мед эмнэлэг</div><div class="card-sub">★★★★☆ · хайг</div></div><span class="tag tag-gray">ХААЛТТАЙ</span></div>
+    </div>
+    <div class="sec-lbl">Онцлох мэргэжил</div>
+    <div class="spec-scroll">
+      <div class="spec-item" onclick="go(2)"><div class="spec-icon-wrap" style="background:#fdeaea">🦷</div><div class="spec-lbl">Шүд</div></div>
+      <div class="spec-item" onclick="go(2)"><div class="spec-icon-wrap" style="background:#e8f0fd">❤️</div><div class="spec-lbl">Зүрх</div></div>
+      <div class="spec-item" onclick="go(2)"><div class="spec-icon-wrap" style="background:#e4f5ed">👶</div><div class="spec-lbl">Хүүхэд</div></div>
+      <div class="spec-item" onclick="go(2)"><div class="spec-icon-wrap" style="background:#fff4e0">🧠</div><div class="spec-lbl">Мэдрэл</div></div>
+      <div class="spec-item" onclick="go(2)"><div class="spec-icon-wrap" style="background:#f0efff">👁️</div><div class="spec-lbl">Нүд</div></div>
+    </div>
+  </div>
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="go(1)"><div class="nav-ico">🏠</div><div class="nav-lbl">Нүүр</div></div>
+    <div class="nav-item" onclick="go(2)"><div class="nav-ico">🔍</div><div class="nav-lbl">Хайх</div></div>
+    <div class="nav-item" onclick="go(9)"><div class="nav-ico">📅</div><div class="nav-lbl">Захиалга</div></div>
+    <div class="nav-item" onclick="go(11)"><div class="nav-ico">👤</div><div class="nav-lbl">Профайл</div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+  S2 · АЛХАМ 1: ЭМНЭЛЭГ СОНГОХ
+══════════════════════════════ -->
+<div class="screen" id="s2">
+  <div class="status-bar"><span class="status-time">9:41</span><span class="status-icons">●●● ▲ ⬛</span></div>
+  <div class="header"><button class="back-btn" onclick="go(1)">← буцах</button><div class="header-title">Дэлгэц 2 — алхам 1: эмнэлэг сонгох</div></div>
+  <div class="stepper">
+    <div class="step-dots">
+      <div class="step-dot s-active">1</div><div class="step-line"></div>
+      <div class="step-dot">2</div><div class="step-line"></div>
+      <div class="step-dot">3</div><div class="step-line"></div>
+      <div class="step-dot">4</div><div class="step-line"></div>
+      <div class="step-dot">5</div>
+    </div>
+    <div class="step-lbls"><span class="step-lbl s-active">эмн.</span><span class="step-lbl">тасаг</span><span class="step-lbl">эмч</span><span class="step-lbl">өдөр</span><span class="step-lbl">цаг</span></div>
+  </div>
+  <div class="body">
+    <input class="input-field" placeholder="[ эмнэлэг хайх... ]" style="margin-bottom:10px" readonly>
+    <div class="pill-row">
+      <div class="pill active" onclick="setPill(this)">Бүгд</div>
+      <div class="pill" onclick="setPill(this)">Найрслал</div>
+      <div class="pill" onclick="setPill(this)">Аймаг</div>
+    </div>
+    <div class="card clickable" onclick="selectHospital('Улсын клиникийн эмнэлэг','★★★★☆ · 1.2km · 0 давхар');go(3)">
+      <div class="row"><div style="flex:1"><div class="card-title">Улсын клиникийн эмнэлэг</div><div class="card-sub">★★★★☆ · 1.2km · 0 давхар</div></div><span class="tag tag-dark">НЭЭЛТТЭЙ</span></div>
+    </div>
+    <div class="card clickable" onclick="selectHospital('Интермед эмнэлэг','★★★★★ · 2.8km · 0 давхар');go(3)">
+      <div class="row"><div style="flex:1"><div class="card-title">Интермед эмнэлэг</div><div class="card-sub">★★★★★ · 2.8km · 0 давхар</div></div><span class="tag tag-red">ААРУУЛ</span></div>
+    </div>
+    <div class="card">
+      <div class="row"><div style="flex:1"><div class="card-title">Гранд Мед</div><div class="card-sub">★★★★☆ · 4.1km</div></div><span class="tag tag-gray">ХААЛТТАЙ</span></div>
+    </div>
+    <div class="alert alert-orange">⚠️ Байршилд тодорхойгүй — гэрээр хайна уу</div>
+  </div>
+  <div class="bottom-nav">
+    <div class="nav-item" onclick="go(1)"><div class="nav-ico">🏠</div><div class="nav-lbl">Нүүр</div></div>
+    <div class="nav-item active"><div class="nav-ico">🔍</div><div class="nav-lbl">Хайх</div></div>
+    <div class="nav-item" onclick="go(9)"><div class="nav-ico">📅</div><div class="nav-lbl">Захиалга</div></div>
+    <div class="nav-item" onclick="go(11)"><div class="nav-ico">👤</div><div class="nav-lbl">Профайл</div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+  S3 · АЛХАМ 2: ТАСАГ СОНГОХ
+══════════════════════════════ -->
+<div class="screen" id="s3">
+  <div class="status-bar"><span class="status-time">9:41</span><span class="status-icons">●●● ▲ ⬛</span></div>
+  <div class="header"><button class="back-btn" onclick="go(2)">← буцах</button><div class="header-title">Дэлгэц 3 — алхам 2: тасаг сонгох</div></div>
+  <div class="stepper">
+    <div class="step-dots">
+      <div class="step-dot s-done">✓</div><div class="step-line s-done"></div>
+      <div class="step-dot s-active">2</div><div class="step-line"></div>
+      <div class="step-dot">3</div><div class="step-line"></div>
+      <div class="step-dot">4</div><div class="step-line"></div>
+      <div class="step-dot">5</div>
+    </div>
+    <div class="step-lbls"><span class="step-lbl s-done">эмн.</span><span class="step-lbl s-active">тасаг</span><span class="step-lbl">эмч</span><span class="step-lbl">өдөр</span><span class="step-lbl">цаг</span></div>
+  </div>
+  <div class="body">
+    <div class="sec-lbl">Сонгосон эмнэлэг</div>
+    <div class="card" id="s3-hosp-card">
+      <div class="card-title" id="s3-hosp-name">Улсын клиникийн эмнэлэг</div>
+      <div class="card-sub" id="s3-hosp-sub">★★★★☆ · 1.2km</div>
+    </div>
+    <input class="input-field" placeholder="[ тасаг хайх... ]" style="margin-bottom:10px" readonly>
+    <div class="sec-lbl">Ойрхон тасаг</div>
+    <div class="card clickable" onclick="selectDept('Дотор тасаг','Ерөнхий дотор эмч');go(4)">
+      <div class="row"><div><div class="card-title">Дотор тасаг</div><div class="card-sub">Ерөнхий дотор эмч</div></div><span style="font-size:11px;color:#888">3 эмч →</span></div>
+    </div>
+    <div class="card clickable" onclick="selectDept('Зүрхний тасаг','Зүрх судасны мэргэжилтэн');go(4)">
+      <div class="row"><div><div class="card-title">Зүрхний тасаг</div><div class="card-sub">Зүрх судасны мэргэжилтэн</div></div><span style="font-size:11px;color:#888">5 эмч →</span></div>
+    </div>
+    <div class="card clickable" onclick="selectDept('Мэдрэлийн тасаг','Мэдрэлийн эмч');go(4)">
+      <div class="row"><div><div class="card-title">Мэдрэлийн тасаг</div><div class="card-sub">Мэдрэлийн эмч</div></div><span style="font-size:11px;color:#e05252">2 эмч →</span></div>
+    </div>
+    <div class="alert alert-red">✕ Сонгосон тасаг байхгүй</div>
+  </div>
+  <div class="bottom-nav">
+    <div class="nav-item" onclick="go(1)"><div class="nav-ico">🏠</div><div class="nav-lbl">Нүүр</div></div>
+    <div class="nav-item active"><div class="nav-ico">🔍</div><div class="nav-lbl">Хайх</div></div>
+    <div class="nav-item" onclick="go(9)"><div class="nav-ico">📅</div><div class="nav-lbl">Захиалга</div></div>
+    <div class="nav-item" onclick="go(11)"><div class="nav-ico">👤</div><div class="nav-lbl">Профайл</div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+  S4 · АЛХАМ 3: ЭМЧ СОНГОХ
+══════════════════════════════ -->
+<div class="screen" id="s4">
+  <div class="status-bar"><span class="status-time">9:41</span><span class="status-icons">●●● ▲ ⬛</span></div>
+  <div class="header"><button class="back-btn" onclick="go(3)">← буцах</button><div class="header-title">Дэлгэц 4 — алхам 3: эмч сонгох</div></div>
+  <div class="stepper">
+    <div class="step-dots">
+      <div class="step-dot s-done">✓</div><div class="step-line s-done"></div>
+      <div class="step-dot s-done">✓</div><div class="step-line s-done"></div>
+      <div class="step-dot s-active">3</div><div class="step-line"></div>
+      <div class="step-dot">4</div><div class="step-line"></div>
+      <div class="step-dot">5</div>
+    </div>
+    <div class="step-lbls"><span class="step-lbl s-done">эмн.</span><span class="step-lbl s-done">тасаг</span><span class="step-lbl s-active">эмч</span><span class="step-lbl">өдөр</span><span class="step-lbl">цаг</span></div>
+  </div>
+  <div class="body">
+    <div class="sec-lbl">Сонгосон тасаг</div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title" id="s4-dept-name">Зүрхний тасаг</div>
+      <div class="card-sub" id="s4-hosp-name">Улсын клиникийн эмнэлэг</div>
+    </div>
+    <!-- Doctor 1 -->
+    <div class="card clickable" onclick="selectDoc('Дотор Болд','Зүрхний эмч','₮35,000','ДБ','#fdeaea','#e05252');go(5)">
+      <div class="doc-card">
+        <div class="avatar avatar-md" style="background:#fdeaea;color:#e05252">ДБ</div>
+        <div class="doc-info">
+          <div class="card-title">Дотор Болд</div>
+          <div class="card-sub">Зүрхний эмч · Дотор тасаг</div>
+          <div class="stars">★★★★★ <span style="color:#888;font-size:10px">4.9</span></div>
+        </div>
+        <div class="doc-price">₮35К</div>
+      </div>
+    </div>
+    <!-- Doctor 2 -->
+    <div class="card clickable" onclick="selectDoc('Нарантуул Амар','Зүрхний эмч','₮28,000','НА','#e8f0fd','#1a4ac0');go(5)">
+      <div class="doc-card">
+        <div class="avatar avatar-md" style="background:#e8f0fd;color:#1a4ac0">НА</div>
+        <div class="doc-info">
+          <div class="card-title">Нарантуул Амар</div>
+          <div class="card-sub">Зүрхний эмч · Дотор тасаг</div>
+          <div class="stars">★★★★☆ <span style="color:#888;font-size:10px">4.5</span></div>
+        </div>
+        <div class="doc-price">₮28К</div>
+      </div>
+    </div>
+    <!-- Doctor 3 (unavailable) -->
+    <div class="card" style="opacity:.6">
+      <div class="doc-card">
+        <div class="avatar avatar-md" style="background:#f0efec;color:#999">ОА</div>
+        <div class="doc-info">
+          <div class="card-title" style="color:#aaa">Очир Анар</div>
+          <div class="card-sub">Зүрхний эмч</div>
+        </div>
+        <span class="tag tag-red" style="font-size:9px">өдөрлөг боломжгүй</span>
+      </div>
+    </div>
+    <div class="alert alert-red">✕ Энэ тасагт эмч байхгүй байна</div>
+  </div>
+  <div class="bottom-nav">
+    <div class="nav-item" onclick="go(1)"><div class="nav-ico">🏠</div><div class="nav-lbl">Нүүр</div></div>
+    <div class="nav-item active"><div class="nav-ico">🔍</div><div class="nav-lbl">Хайх</div></div>
+    <div class="nav-item" onclick="go(9)"><div class="nav-ico">📅</div><div class="nav-lbl">Захиалга</div></div>
+    <div class="nav-item" onclick="go(11)"><div class="nav-ico">👤</div><div class="nav-lbl">Профайл</div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+  S5 · АЛХАМ 4: ӨДӨР СОНГОХ
+══════════════════════════════ -->
+<div class="screen" id="s5">
+  <div class="status-bar"><span class="status-time">9:41</span><span class="status-icons">●●● ▲ ⬛</span></div>
+  <div class="header"><button class="back-btn" onclick="go(4)">← буцах</button><div class="header-title">Дэлгэц 5 — алхам 4: өдөр сонгох</div></div>
+  <div class="stepper">
+    <div class="step-dots">
+      <div class="step-dot s-done">✓</div><div class="step-line s-done"></div>
+      <div class="step-dot s-done">✓</div><div class="step-line s-done"></div>
+      <div class="step-dot s-done">✓</div><div class="step-line s-done"></div>
+      <div class="step-dot s-active">4</div><div class="step-line"></div>
+      <div class="step-dot">5</div>
+    </div>
+    <div class="step-lbls"><span class="step-lbl s-done">эмн.</span><span class="step-lbl s-done">тасаг</span><span class="step-lbl s-done">эмч</span><span class="step-lbl s-active">өдөр</span><span class="step-lbl">цаг</span></div>
+  </div>
+  <div class="body">
+    <!-- Selected doctor mini header -->
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px">
+      <div class="avatar avatar-sm" id="s5-doc-av" style="background:#fdeaea;color:#e05252">ДБ</div>
+      <div><div style="font-size:13px;font-weight:700" id="s5-doc-name">Дотор Болд</div><div class="card-sub" id="s5-dept-name">Зүрхний тасаг</div></div>
+    </div>
+    <!-- Calendar -->
+    <div class="cal-month">
+      <span class="cal-month-name">— 2026 оны 4-р сар —</span>
+    </div>
+    <div class="cal-grid">
+      <div class="cal-hdr">Да</div><div class="cal-hdr">Мя</div><div class="cal-hdr">Лх</div><div class="cal-hdr">Пү</div><div class="cal-hdr">Ба</div><div class="cal-hdr">Бя</div><div class="cal-hdr">Ня</div>
+      <!-- Week 1 -->
+      <div class="cal-day disabled"></div><div class="cal-day disabled"></div><div class="cal-day disabled">1</div><div class="cal-day disabled">2</div><div class="cal-day disabled">3</div><div class="cal-day disabled">4</div><div class="cal-day disabled">5</div>
+      <!-- Week 2 -->
+      <div class="cal-day disabled">6</div><div class="cal-day disabled">7</div><div class="cal-day disabled">8</div><div class="cal-day disabled">9</div><div class="cal-day disabled">10</div><div class="cal-day disabled">11</div><div class="cal-day disabled">12</div>
+      <!-- Week 3 -->
+      <div class="cal-day disabled">13</div><div class="cal-day disabled">14</div><div class="cal-day disabled">15</div><div class="cal-day disabled">16</div><div class="cal-day disabled">17</div><div class="cal-day disabled">18</div><div class="cal-day disabled">19</div>
+      <!-- Week 4 — today=20, selectable from 21 -->
+      <div class="cal-day today">20</div>
+      <div class="cal-day" onclick="pickDate(this,'2026/04/21')">21</div>
+      <div class="cal-day" onclick="pickDate(this,'2026/04/22')">22</div>
+      <div class="cal-day" onclick="pickDate(this,'2026/04/23')">23</div>
+      <div class="cal-day" onclick="pickDate(this,'2026/04/24')">24</div>
+      <div class="cal-day" onclick="pickDate(this,'2026/04/25')">25</div>
+      <div class="cal-day" onclick="pickDate(this,'2026/04/26')">26</div>
+      <!-- Week 5 -->
+      <div class="cal-day" onclick="pickDate(this,'2026/04/27')">27</div>
+      <div class="cal-day" onclick="pickDate(this,'2026/04/28')">28</div>
+      <div class="cal-day" onclick="pickDate(this,'2026/04/29')">29</div>
+      <div class="cal-day" onclick="pickDate(this,'2026/04/30')">30</div>
+    </div>
+    <div style="display:flex;gap:14px;font-size:10px;color:#888;margin-top:6px;margin-bottom:8px">
+      <span>● сонгосон</span><span style="opacity:.5">○ боломжтой</span>
+    </div>
+    <div class="alert alert-orange">⚠ 7-хоногийн дотор цаг байхгүй — дараагийн сарыг харна уу</div>
+  </div>
+  <div class="bottom-nav">
+    <div class="nav-item" onclick="go(1)"><div class="nav-ico">🏠</div><div class="nav-lbl">Нүүр</div></div>
+    <div class="nav-item active"><div class="nav-ico">🔍</div><div class="nav-lbl">Хайх</div></div>
+    <div class="nav-item" onclick="go(9)"><div class="nav-ico">📅</div><div class="nav-lbl">Захиалга</div></div>
+    <div class="nav-item" onclick="go(11)"><div class="nav-ico">👤</div><div class="nav-lbl">Профайл</div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+  S6 · АЛХАМ 5: ЦАГ СОНГОХ
+══════════════════════════════ -->
+<div class="screen" id="s6">
+  <div class="status-bar"><span class="status-time">9:41</span><span class="status-icons">●●● ▲ ⬛</span></div>
+  <div class="header"><button class="back-btn" onclick="go(5)">← буцах</button><div class="header-title">Дэлгэц 6 — алхам 5: цаг сонгох</div></div>
+  <div class="stepper">
+    <div class="step-dots">
+      <div class="step-dot s-done">✓</div><div class="step-line s-done"></div>
+      <div class="step-dot s-done">✓</div><div class="step-line s-done"></div>
+      <div class="step-dot s-done">✓</div><div class="step-line s-done"></div>
+      <div class="step-dot s-done">✓</div><div class="step-line s-done"></div>
+      <div class="step-dot s-active">5</div>
+    </div>
+    <div class="step-lbls"><span class="step-lbl s-done">эмн.</span><span class="step-lbl s-done">тасаг</span><span class="step-lbl s-done">эмч</span><span class="step-lbl s-done">өдөр</span><span class="step-lbl s-active">цаг</span></div>
+  </div>
+  <div class="body">
+    <div style="font-size:11px;font-weight:700;color:#888;margin-bottom:8px" id="s6-date-lbl">2026/04/22</div>
+    <div class="sec-lbl">Өглөө</div>
+    <div class="slot-grid">
+      <div class="slot taken">09:00</div>
+      <div class="slot" id="sl-0930" onclick="pickSlot('09:30','sl-0930')">09:30</div>
+      <div class="slot taken">10:00</div>
+      <div class="slot taken">10:30</div>
+      <div class="slot" id="sl-1100" onclick="pickSlot('11:00','sl-1100')">11:00</div>
+    </div>
+    <div class="sec-lbl" style="margin-top:6px">Үдий хойно</div>
+    <div class="slot-grid">
+      <div class="slot taken">13:00</div>
+      <div class="slot taken">13:30</div>
+      <div class="slot" id="sl-1400" onclick="pickSlot('14:00','sl-1400')">14:00</div>
+      <div class="slot" id="sl-1430" onclick="pickSlot('14:30','sl-1430')">14:30</div>
+      <div class="slot taken">15:30</div>
+    </div>
+    <div class="alert alert-orange" style="margin-top:10px">⚠ Сааралт = захиалагдсан. Өөр өдөр сонгох уу?</div>
+    <!-- Selected time summary -->
+    <div id="slot-summary" style="display:none;background:#fff;border-radius:10px;padding:11px;border:1px solid #e8e6e2;margin-bottom:10px">
+      <div style="font-size:10px;color:#888;margin-bottom:3px">Сонгосон цаг</div>
+      <div style="font-size:15px;font-weight:800;color:#e05252" id="slot-summary-time">09:30</div>
+      <div style="font-size:11px;color:#666;margin-top:2px" id="slot-summary-sub">Дотор Болд · Зүрхний тасаг</div>
+    </div>
+    <button class="btn-primary" id="btn-confirm" style="display:none" onclick="go(7)">[ Баталгаажуулах → ]</button>
+  </div>
+  <div class="bottom-nav">
+    <div class="nav-item" onclick="go(1)"><div class="nav-ico">🏠</div><div class="nav-lbl">Нүүр</div></div>
+    <div class="nav-item active"><div class="nav-ico">🔍</div><div class="nav-lbl">Хайх</div></div>
+    <div class="nav-item" onclick="go(9)"><div class="nav-ico">📅</div><div class="nav-lbl">Захиалга</div></div>
+    <div class="nav-item" onclick="go(11)"><div class="nav-ico">👤</div><div class="nav-lbl">Профайл</div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+  S7 · БАТАЛГААЖУУЛАХ (Confirm)
+══════════════════════════════ -->
+<div class="screen" id="s7">
+  <div class="status-bar"><span class="status-time">9:41</span><span class="status-icons">●●● ▲ ⬛</span></div>
+  <div class="header"><button class="back-btn" onclick="go(6)">← буцах</button><div class="header-title">Дэлгэц 7 — баталгаажуулах</div></div>
+  <div class="body">
+    <div class="sec-lbl">Захиалгын мэдээлэл</div>
+    <div class="card">
+      <div class="info-row"><span class="info-lbl">Эмнэлэг</span><span class="info-val" id="c-hosp">Улсын клиник</span></div>
+      <div class="info-row"><span class="info-lbl">Тасаг</span><span class="info-val" id="c-dept">Зүрхний тасаг</span></div>
+      <div class="info-row"><span class="info-lbl">Эмч</span><span class="info-val" id="c-doc">Дотор Болд</span></div>
+      <div class="info-row"><span class="info-lbl">Орнос</span><span class="info-val" id="c-spec">Зүрх судасны</span></div>
+      <div class="info-row" style="margin-bottom:0"><span class="info-lbl">Цаг / огноо</span><span class="info-val" id="c-time">09:30 · 2026/04/22</span></div>
+    </div>
+    <div class="sec-lbl">Өвчтөний мэдээлэл</div>
+    <div class="card">
+      <div class="info-row"><span class="info-lbl">Нэр</span><span class="info-val">Бат Дорж</span></div>
+      <div class="info-row"><span class="info-lbl">Утас</span><span class="info-val">9911-xxxx</span></div>
+      <div class="info-row" style="margin-bottom:0"><span class="info-lbl">Даатгал</span><span class="info-val" id="c-ins">МДА</span></div>
+    </div>
+    <div class="sec-lbl">Нийлбэр төлбөр</div>
+    <div class="card">
+      <div class="total-row"><span style="font-size:13px;color:#666">Үзлэгийн хөлс</span><span style="font-size:14px;font-weight:800" id="c-fee">₮35,000</span></div>
+    </div>
+    <!-- Checkbox -->
+    <div class="checkbox-row" onclick="toggleCb()">
+      <div class="custom-cb" id="terms-cb"></div>
+      <span class="cb-lbl">Нөхцөл, журамтай танилцсан</span>
+    </div>
+    <div class="alert alert-red">✕ Мэдэгдэл тэндсэрлэж уу?</div>
+    <button class="btn-primary red" onclick="submitOrder()">[ Захиалах ]</button>
+    <div class="alert alert-orange" style="margin-top:9px">⚠ Сүүлэд тасарсан — дахин оролдоно уу</div>
+  </div>
+  <div class="bottom-nav">
+    <div class="nav-item" onclick="go(1)"><div class="nav-ico">🏠</div><div class="nav-lbl">Нүүр</div></div>
+    <div class="nav-item active"><div class="nav-ico">🔍</div><div class="nav-lbl">Хайх</div></div>
+    <div class="nav-item" onclick="go(9)"><div class="nav-ico">📅</div><div class="nav-lbl">Захиалга</div></div>
+    <div class="nav-item" onclick="go(11)"><div class="nav-ico">👤</div><div class="nav-lbl">Профайл</div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+  S8 · АМЖИЛТТАЙ (Success)
+══════════════════════════════ -->
+<div class="screen" id="s8">
+  <div class="status-bar"><span class="status-time">9:41</span><span class="status-icons">●●● ▲ ⬛</span></div>
+  <div class="header"><div class="header-title">Дэлгэц 8 — амжилттай</div></div>
+  <div class="body" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
+    <div class="success-ring">
+      <svg width="38" height="38" viewBox="0 0 38 38">
+        <circle cx="19" cy="19" r="17" fill="none" stroke="#1a7a4a" stroke-width="2.5"/>
+        <path d="M11 19.5l6 6 11-13" stroke="#1a7a4a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div style="font-size:17px;font-weight:800;color:#1a1a1a;margin-bottom:6px">Захиалга баталгаажлаа</div>
+    <div style="font-size:12px;color:#888;margin-bottom:16px">Цагийн мэдэгдэл утас руу илгээлээ</div>
+    <div class="card" style="width:100%;text-align:left">
+      <div class="info-row"><span class="info-lbl">Эмнэлэг</span><span class="info-val" id="s8-hosp">Улсын клиник</span></div>
+      <div class="info-row"><span class="info-lbl">Тасаг</span><span class="info-val" id="s8-dept">Зүрхний тасаг</span></div>
+      <div class="info-row"><span class="info-lbl">Эмч</span><span class="info-val" id="s8-doc">Дотор Болд</span></div>
+      <div class="info-row" style="margin-bottom:0"><span class="info-lbl">Цаг / огноо</span><span class="info-val" id="s8-time">09:30 · 2026/04/22</span></div>
+    </div>
+    <div style="margin:10px 0;font-size:11px;color:#888">Захиалгын дугаар: <strong style="color:#1a1a1a" id="s8-ref">#MED-2042</strong></div>
+    <button class="btn-primary" style="width:100%" onclick="go(9)">[ Миний захиалгууд → ]</button>
+    <button class="btn-secondary" onclick="go(1)">[ Нүүр хуудас руу → ]</button>
+  </div>
+  <div class="bottom-nav">
+    <div class="nav-item" onclick="go(1)"><div class="nav-ico">🏠</div><div class="nav-lbl">Нүүр</div></div>
+    <div class="nav-item" onclick="go(2)"><div class="nav-ico">🔍</div><div class="nav-lbl">Хайх</div></div>
+    <div class="nav-item active"><div class="nav-ico">📅</div><div class="nav-lbl">Захиалга</div></div>
+    <div class="nav-item" onclick="go(11)"><div class="nav-ico">👤</div><div class="nav-lbl">Профайл</div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+  S9 · МИНИЙ ЗАХИАЛГУУД — UPCOMING
+══════════════════════════════ -->
+<div class="screen" id="s9">
+  <div class="status-bar"><span class="status-time">9:41</span><span class="status-icons">●●● ▲ ⬛</span></div>
+  <div class="header"><div class="header-title">Миний захиалгууд</div></div>
+  <div class="body">
+    <div class="tab-row">
+      <div class="tab-btn active" id="tab9-up" onclick="switchTab9('up')">upcoming (2)</div>
+      <div class="tab-btn" id="tab9-past" onclick="switchTab9('past')">өнгөрсөн (5)</div>
+    </div>
+    <!-- Upcoming content -->
+    <div id="tab9-up-content">
+      <div class="card" id="s9-new-order">
+        <div class="row" style="margin-bottom:0">
+          <div><div class="card-title" id="s9-doc-name">Дотор Болд</div><div class="card-sub" id="s9-time">2026/04/22 · 09:30</div></div>
+          <span class="tag tag-blue">Баталгаажсан</span>
+        </div>
+        <div class="divider"></div>
+        <div style="display:flex;gap:7px">
+          <button class="tag tag-blue" style="cursor:pointer;padding:6px 12px;border:none;font-size:11px;border-radius:8px">өөрчлөх</button>
+          <button class="tag tag-red" style="cursor:pointer;padding:6px 12px;border:none;font-size:11px;border-radius:8px" onclick="cancelOrder(this)">цуцлах</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="row" style="margin-bottom:0"><div><div class="card-title">Шүдний эмч</div><div class="card-sub">2026/04/28 · 14:00</div></div><span class="tag tag-orange">Хүлээгдэж байна</span></div>
+        <div class="divider"></div>
+        <button class="tag tag-red" style="cursor:pointer;padding:6px 12px;border:none;font-size:11px;border-radius:8px">цуцлах</button>
+      </div>
+      <div class="alert alert-orange">⚠ 24 цагийн өмнө цуцлах боломжтой</div>
+    </div>
+    <!-- Past content (screen 10) -->
+    <div id="tab9-past-content" style="display:none">
+      <div class="card">
+        <div class="row" style="margin-bottom:0"><div><div class="card-title">Нарантуул Амар</div><div class="card-sub">2026/03/10 · 10:00</div></div><span class="tag tag-gray">Дууссан</span></div>
+        <div class="stars" style="margin-top:5px">★★★★☆ <span style="color:#888;font-size:10px">үнэлгээ өгсөн</span></div>
+        <button class="btn-secondary" style="margin-top:6px;padding:9px" onclick="go(2)">Дахин захиалах</button>
+      </div>
+      <div class="card">
+        <div class="row" style="margin-bottom:0"><div><div class="card-title">Шүдний эмч</div><div class="card-sub">2026/02/14 · 11:30</div></div><span class="tag tag-red" style="font-size:9px">Цуцлагдсан</span></div>
+        <div class="stars" style="margin-top:5px">★ <span style="color:#888;font-size:10px">үнэлгээ өгч</span></div>
+        <button class="btn-secondary" style="margin-top:6px;padding:9px" onclick="go(2)">Дахин захиалах</button>
+      </div>
+    </div>
+  </div>
+  <div class="bottom-nav">
+    <div class="nav-item" onclick="go(1)"><div class="nav-ico">🏠</div><div class="nav-lbl">Нүүр</div></div>
+    <div class="nav-item" onclick="go(2)"><div class="nav-ico">🔍</div><div class="nav-lbl">Хайх</div></div>
+    <div class="nav-item active"><div class="nav-ico">📅</div><div class="nav-lbl">Захиалга</div></div>
+    <div class="nav-item" onclick="go(11)"><div class="nav-ico">👤</div><div class="nav-lbl">Профайл</div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+  S11 · ПРОФАЙЛ
+══════════════════════════════ -->
+<div class="screen" id="s11">
+  <div class="status-bar"><span class="status-time">9:41</span><span class="status-icons">●●● ▲ ⬛</span></div>
+  <div class="header"><div class="header-title">Профайл</div></div>
+  <div class="body">
+    <div style="text-align:center;margin-bottom:14px">
+      <div class="avatar avatar-lg" style="display:flex">БД</div>
+      <div style="font-size:15px;font-weight:800;margin-top:6px">Бат Дорж</div>
+      <div style="font-size:12px;color:#888">bat.dorj@gmail.com</div>
+    </div>
+    <div class="sec-lbl">Хувийн мэдээлэл</div>
+    <div class="card">
+      <div class="setting-row"><span class="setting-lbl">Нэр</span><span class="setting-val">Бат Дорж</span></div>
+      <div class="setting-row"><span class="setting-lbl">Утас</span><span class="setting-val">9911-xxxx</span></div>
+      <div class="setting-row"><span class="setting-lbl">Даатгал</span><span class="setting-val">МДА</span></div>
+      <div class="setting-row"><span class="setting-lbl">Төрсөн он</span><span class="setting-val">1992/05/12</span></div>
+      <div class="setting-row"><span class="setting-lbl">Төхөөрөмж</span><span class="tag tag-green" style="font-size:10px">асаалттай</span></div>
+      <div class="setting-row"><span class="setting-lbl">Мэдэгдэл</span><div class="toggle on" id="tog-notif" onclick="toggleSw('tog-notif')"><div class="toggle-dot"></div></div></div>
+      <div class="setting-row"><span class="setting-lbl">Хэл</span><span class="setting-val"><span class="tag tag-gray" style="font-size:11px">Монгол</span></span></div>
+      <div class="setting-row"><span class="setting-lbl">Харанхуй горим</span><div class="toggle off" id="tog-dark" onclick="toggleSw('tog-dark')"><div class="toggle-dot"></div></div></div>
+    </div>
+    <div class="alert alert-red" style="margin-top:10px">✕ Session дууссан — дахин нэвтрэнэ үү</div>
+    <button class="btn-primary" style="background:#f0efec;color:#777;font-weight:600">[ Гарах ]</button>
+  </div>
+  <div class="bottom-nav">
+    <div class="nav-item" onclick="go(1)"><div class="nav-ico">🏠</div><div class="nav-lbl">Нүүр</div></div>
+    <div class="nav-item" onclick="go(2)"><div class="nav-ico">🔍</div><div class="nav-lbl">Хайх</div></div>
+    <div class="nav-item" onclick="go(9)"><div class="nav-ico">📅</div><div class="nav-lbl">Захиалга</div></div>
+    <div class="nav-item active"><div class="nav-ico">👤</div><div class="nav-lbl">Профайл</div></div>
+  </div>
+</div>
+
+  </div><!-- /phone -->
+
+  <!-- Quick nav -->
+  <div class="nav-quick">
+    <button onclick="go(1)"  id="nq1"  class="nq-btn cur">1·Нүүр</button>
+    <button onclick="go(2)"  id="nq2"  class="nq-btn">2·Эмнэлэг</button>
+    <button onclick="go(3)"  id="nq3"  class="nq-btn">3·Тасаг</button>
+    <button onclick="go(4)"  id="nq4"  class="nq-btn">4·Эмч</button>
+    <button onclick="go(5)"  id="nq5"  class="nq-btn">5·Өдөр</button>
+    <button onclick="go(6)"  id="nq6"  class="nq-btn">6·Цаг</button>
+    <button onclick="go(7)"  id="nq7"  class="nq-btn">7·Баталгаа</button>
+    <button onclick="go(8)"  id="nq8"  class="nq-btn">8·Амжилттай</button>
+    <button onclick="go(9)"  id="nq9"  class="nq-btn">9·Захиалгууд</button>
+    <button onclick="go(11)" id="nq11" class="nq-btn">10·Профайл</button>
+  </div>
+  <div class="nq-tip">Дэлгэц хооронд шилжихэд дугаарыг дарна уу</div>
+</div><!-- /proto-wrap -->
+
+<script>
+/* ─── State ─── */
+const state = {
+  hospital: 'Улсын клиникийн эмнэлэг',
+  hospitalSub: '★★★★☆ · 1.2km · 0 давхар',
+  dept: 'Зүрхний тасаг',
+  deptSub: 'Зүрх судасны мэргэжилтэн',
+  docName: 'Дотор Болд',
+  docSpec: 'Зүрхний эмч',
+  docFee: '₮35,000',
+  docAv: 'ДБ',
+  docAvBg: '#fdeaea',
+  docAvColor: '#e05252',
+  date: '2026/04/22',
+  time: '09:30',
+  cbChecked: false,
+  selectedSlotId: null,
+  selectedCalDay: null,
+};
+
+const screenLabels = {
+  1:'1 · Нүүр хуудас',2:'2 · Алхам 1: Эмнэлэг сонгох',3:'3 · Алхам 2: Тасаг сонгох',
+  4:'4 · Алхам 3: Эмч сонгох',5:'5 · Алхам 4: Өдөр сонгох',6:'6 · Алхам 5: Цаг сонгох',
+  7:'7 · Баталгаажуулах',8:'8 · Амжилттай',9:'9 · Миний захиалгууд',11:'10 · Профайл'
+};
+const nqMap = {1:'nq1',2:'nq2',3:'nq3',4:'nq4',5:'nq5',6:'nq6',7:'nq7',8:'nq8',9:'nq9',11:'nq11'};
+
+/* ─── Navigation ─── */
+function go(n) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s' + n);
+  if (el) el.classList.add('active');
+  document.getElementById('screen-badge').textContent = screenLabels[n] || 'Дэлгэц ' + n;
+  Object.values(nqMap).forEach(id => { const b = document.getElementById(id); if(b) b.classList.remove('cur'); });
+  const nb = document.getElementById(nqMap[n]);
+  if (nb) nb.classList.add('cur');
+  // Update derived screens
+  if (n === 3) updateS3();
+  if (n === 4) updateS4();
+  if (n === 5) updateS5();
+  if (n === 6) updateS6();
+  if (n === 7) updateS7();
+  if (n === 8) updateS8();
+}
+
+/* ─── Hospital selection ─── */
+function selectHospital(name, sub) {
+  state.hospital = name;
+  state.hospitalSub = sub;
+}
+function updateS3() {
+  setText('s3-hosp-name', state.hospital);
+  setText('s3-hosp-sub', state.hospitalSub);
+}
+
+/* ─── Department selection ─── */
+function selectDept(name, sub) {
+  state.dept = name;
+  state.deptSub = sub;
+}
+function updateS4() {
+  setText('s4-dept-name', state.dept);
+  setText('s4-hosp-name', state.hospital);
+}
+
+/* ─── Doctor selection ─── */
+function selectDoc(name, spec, fee, av, avBg, avColor) {
+  state.docName = name; state.docSpec = spec; state.docFee = fee;
+  state.docAv = av; state.docAvBg = avBg; state.docAvColor = avColor;
+}
+function updateS5() {
+  const avEl = document.getElementById('s5-doc-av');
+  if (avEl) { avEl.textContent = state.docAv; avEl.style.background = state.docAvBg; avEl.style.color = state.docAvColor; }
+  setText('s5-doc-name', state.docName);
+  setText('s5-dept-name', state.dept);
+}
+function updateS6() {
+  setText('s6-date-lbl', state.date);
+  setText('slot-summary-sub', state.docName + ' · ' + state.dept);
+  // Reset slot selection if coming fresh
+}
+
+/* ─── Calendar date picking ─── */
+function pickDate(el, dateStr) {
+  if (state.selectedCalDay) state.selectedCalDay.classList.remove('cal-sel');
+  el.classList.add('cal-sel');
+  state.selectedCalDay = el;
+  state.date = dateStr;
+  go(6);
+}
+
+/* ─── Time slot selection ─── */
+function pickSlot(time, slotId) {
+  if (state.selectedSlotId) {
+    const prev = document.getElementById(state.selectedSlotId);
+    if (prev) prev.classList.remove('selected');
+  }
+  const el = document.getElementById(slotId);
+  if (el) el.classList.add('selected');
+  state.selectedSlotId = slotId;
+  state.time = time;
+  // Show summary + confirm button
+  document.getElementById('slot-summary').style.display = 'block';
+  document.getElementById('btn-confirm').style.display = 'block';
+  setText('slot-summary-time', time + ' · ' + state.date);
+  setText('slot-summary-sub', state.docName + ' · ' + state.dept);
+}
+
+/* ─── Confirm screen (S7) ─── */
+function updateS7() {
+  setText('c-hosp', state.hospital.replace('ийн эмнэлэг','').replace(' эмнэлэг',''));
+  setText('c-dept', state.dept);
+  setText('c-doc', state.docName);
+  setText('c-spec', state.deptSub || 'Зүрх судасны');
+  setText('c-time', state.time + ' · ' + state.date);
+  setText('c-fee', state.docFee);
+}
+
+/* ─── Checkbox ─── */
+function toggleCb() {
+  state.cbChecked = !state.cbChecked;
+  const cb = document.getElementById('terms-cb');
+  if (state.cbChecked) { cb.classList.add('checked'); cb.innerHTML = '✓'; }
+  else { cb.classList.remove('checked'); cb.innerHTML = ''; }
+}
+
+/* ─── Submit / go to success ─── */
+function submitOrder() {
+  go(8);
+}
+function updateS8() {
+  setText('s8-hosp', state.hospital.replace('ийн эмнэлэг','').replace(' эмнэлэг',''));
+  setText('s8-dept', state.dept);
+  setText('s8-doc', state.docName);
+  setText('s8-time', state.time + ' · ' + state.date);
+  // Update orders screen too
+  setText('s9-doc-name', state.docName);
+  setText('s9-time', state.date + ' · ' + state.time);
+}
+
+/* ─── Cancel order ─── */
+function cancelOrder(btn) {
+  const card = btn.closest('.card');
+  if (card) { card.style.opacity = '0.4'; card.style.pointerEvents = 'none'; }
+}
+
+/* ─── Tab switch (S9 / S10) ─── */
+function switchTab9(t) {
+  document.getElementById('tab9-up-content').style.display = t === 'up' ? 'block' : 'none';
+  document.getElementById('tab9-past-content').style.display = t === 'past' ? 'block' : 'none';
+  document.getElementById('tab9-up').className = 'tab-btn' + (t === 'up' ? ' active' : '');
+  document.getElementById('tab9-past').className = 'tab-btn' + (t === 'past' ? ' active' : '');
+}
+
+/* ─── Toggle switch ─── */
+function toggleSw(id) {
+  const el = document.getElementById(id);
+  if (el.classList.contains('on')) { el.classList.remove('on'); el.classList.add('off'); }
+  else { el.classList.remove('off'); el.classList.add('on'); }
+}
+
+/* ─── Pill select ─── */
+function setPill(el) {
+  el.closest('.pill-row').querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+}
+
+/* ─── Util ─── */
+function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+</script>
+</body>
+</html>
